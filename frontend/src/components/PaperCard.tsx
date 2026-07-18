@@ -8,10 +8,9 @@ interface Props {
 }
 
 export default function PaperCard({ paper, onOpen }: Props) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
 
-  const preview =
-    lang === "zh" && paper.abstract_zh ? paper.abstract_zh : paper.abstract;
+  const preview = paper.abstract;
 
   return (
     <button
@@ -52,7 +51,7 @@ export default function PaperCard({ paper, onOpen }: Props) {
             key={tag}
             className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] text-brand-700"
           >
-            {tag}
+            {t(`tag.${tag}`)}
           </span>
         ))}
       </div>

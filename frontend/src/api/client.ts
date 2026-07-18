@@ -1,4 +1,4 @@
-import type { Filters, Meta, PaperListResponse } from "../types";
+import type { Filters, Meta, Paper, PaperListResponse } from "../types";
 
 const API_BASE = "/api";
 
@@ -29,5 +29,13 @@ export async function fetchPapers(
     console.error("fetchPapers failed", res.status);
     throw new Error("fetchPapers failed");
   }
+  return res.json();
+}
+
+export async function translatePaperAbstract(paperId: number): Promise<Paper> {
+  const res = await fetch(`${API_BASE}/papers/${paperId}/translate_zh`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("translatePaperAbstract failed");
   return res.json();
 }

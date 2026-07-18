@@ -80,7 +80,7 @@ export default function FilterBar({
           <option value="">{t("allTags")}</option>
           {meta?.tags.map((tag) => (
             <option key={tag} value={tag}>
-              {tag}
+              {t(`tag.${tag}`)}
             </option>
           ))}
         </select>

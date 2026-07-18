@@ -19,9 +19,10 @@ SEED_JSON = os.path.join(PROJECT_ROOT, "papers.json")
 
 # Diffusion keyword filter shared by scrapers
 DIFFUSION_KEYWORDS = [
-    "diffusion", "denoising", "ddpm", "score-based", "generative model",
+    "diffusion", "denoising", "ddpm", "ddim", "score-based",
+    "score matching", "flow matching", "rectified flow", "consistency model",
     "diffusion model", "diffusion probabilistic", "latent diffusion",
-    "stable diffusion", "text-to-image", "image generation", "generative",
+    "stable diffusion",
 ]
 
 # Scraper networking
