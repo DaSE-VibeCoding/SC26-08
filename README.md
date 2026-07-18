@@ -1,108 +1,117 @@
-# SC26-08
-DaSE 2026 暑期学校 SC26-08 小组项目仓库。
-# 📚 Diffusion Papers - ACL Collection
+# SC26-08 · Diffusion Papers Hub
 
-一个用于收集和展示扩散模型相关论文的项目，支持从 arXiv 自动爬取论文数据并在前端页面进行搜索和筛选。
+DaSE 2026 暑期学校 SC26-08 小组项目。
 
-## ✨ 功能特性
+一个面向 **Diffusion（扩散模型）方向** 论文的检索与浏览平台：后端聚合多数据源（arXiv、Papers With Code、Semantic Scholar 会议论文、CVF 会议 proceedings、papernotes.org），统一存储于 SQLite 并提供 REST API；前端以卡片形式展示论文，支持按会议 / 年份 / 标签筛选与全文搜索，并支持**界面中英切换**（摘要保留英文原文，预留可选的人工中文摘要字段）。
 
-- 🔍 **论文搜索**：按标题、作者、关键词搜索论文
-- 🏷️ **标签筛选**：按主题标签（diffusion、denoising、generative等）筛选论文
-- 📊 **统计信息**：显示论文总数和来源会议数量
-- 🔗 **链接跳转**：点击标题跳转到 arXiv 摘要页面
+> 本期不包含六段式结构化分析，也不调用任何 LLM / 本地模型。
 
-## 📁 项目结构
+已接通的会议（2021–2025）：**ACL · CVPR · ICLR · AAAI · NeurIPS · ICCV · ICML · ECCV**。
+
+## 架构
 
 ```
-├── scraper.py          # arXiv 论文爬虫脚本
-├── analyze_page.py     # ACL 会议页面分析脚本（辅助）
-├── index.html          # 前端展示页面
-├── papers.json         # 论文数据文件（运行爬虫后生成）
-└── .gitignore          # Git 忽略配置
+前端 (React + Vite + TS + Tailwind)
+        │  fetch /api/*
+        ▼
+后端 (FastAPI) ── SQLite (papers.db)
+        ▲
+        │ 采集/归一化/去重
+多数据源:
+  · arXiv API（主源，可靠）
+  · Semantic Scholar API（按 venue 接入 ACL/CVPR/ICLR/AAAI/NeurIPS/ICCV/ICML/ECCV，需免费 key）
+  · CVF Open Access（CVPR/ICCV/ECCV 的会议 proceedings HTML，免 key）
+  · Papers With Code API / papernotes.org（best-effort）
 ```
 
-## 🚀 快速开始
+- 后端在 `/` 托管前端构建产物，API 挂载于 `/api`。
+- 开发期由 Vite dev server 代理 `/api` 到后端。
 
-### 环境要求
+## 目录结构
 
-- Python 3.8+
-- 现代浏览器（Chrome、Firefox、Edge等）
+```
+SC26-08/
+├── backend/
+│   ├── main.py            # FastAPI 应用（API + 静态托管）
+│   ├── config.py          # 配置：DB 路径、数据源开关、采集参数
+│   ├── database.py        # SQLite 连接与建表
+│   ├── models.py          # SQLAlchemy 模型 + Pydantic Schema
+│   ├── crud.py            # 查询 / 过滤 / 分页 / upsert / 中文摘要更新
+│   ├── import_seed.py     # 将 papers.json 导入 SQLite
+│   └── scrapers/          # 多源采集器 + run.py 编排入口
+├── frontend/              # React 前端（构建输出到 backend/static）
+├── papers.json            # arXiv diffusion 种子数据
+├── scraper.py             # (已废弃) 旧独立脚本，逻辑已迁移至 backend/scrapers
+└── requirements.txt       # 后端依赖
+```
 
-### 步骤 1：安装依赖
+## 快速开始
+
+### 1. 后端
 
 ```bash
-pip install requests beautifulsoup4
+# 安装依赖
+pip install -r requirements.txt
+
+# 导入种子数据（首次）
+cd backend
+python3 import_seed.py
+
+# 启动服务
+python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-### 步骤 2：获取论文数据
+访问 <http://127.0.0.1:8000/>（若已构建前端则展示 UI），API 文档见 <http://127.0.0.1:8000/docs>。
 
-运行爬虫脚本从 arXiv 爬取扩散模型相关论文：
+### 2. 前端
 
 ```bash
-python scraper.py
+cd frontend
+npm install
+
+# 开发模式（热更新，代理 /api 到 :8000）
+npm run dev
+
+# 生产构建（输出到 backend/static，由后端托管）
+npm run build
 ```
 
-- 如果 `papers.json` 已有 ≥30 篇论文，脚本会自动跳过更新
-- 强制更新（重新爬取）：
+## 数据采集
 
 ```bash
-python scraper.py --force
+cd backend
+python3 scrapers/run.py --max 100
 ```
 
-### 步骤 3：启动前端页面
+- 数据源开关见 `backend/config.py`（`ENABLE_ARXIV` / `ENABLE_PAPERSWITHCODE` / `ENABLE_PROCEEDINGS` / `ENABLE_PAPERNOTES` / `ENABLE_SEMANTIC_SCHOLAR`）。
+- **Semantic Scholar（会议论文主源）** 需要一个 **免费 API key**：
+  1. 前往 <https://www.semanticscholar.org/product/api> 注册并创建 key（免费，无需付费）。
+  2. 在项目根目录创建 `.env` 文件，写入：
+     ```
+     SEMANTIC_SCHOLAR_API_KEY=你的key
+     ```
+     （可参考 `.env.example`。）
+  3. 未配置 key 时该源会优雅跳过，不影响其他数据源。
+- 会议 / 年份范围在 `config.py` 的 `SEMANTIC_SCHOLAR_CONFERENCES` 与 `CONFERENCE_YEARS` 中配置（默认 ACL/CVPR/ICLR/AAAI/NeurIPS/ICCV/ICML/ECCV，2021–2025）；CVF（CVPR/ICCV/ECCV）通过 `proceedings.py` 的 `DEFAULT_TARGETS` 配置，免 key。
+- arXiv 为可靠主源；Papers With Code / proceedings / papernotes 为 best-effort，单源失败不影响其他源。
+- 去重：标题归一化（小写去标点）+ 来源 组成唯一键。
 
-在项目目录下启动本地 HTTP 服务器：
+## API 概览
 
-```bash
-python -m http.server 8000
-```
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/health` | 健康检查 |
+| GET | `/api/meta` | 会议 / 年份 / 标签 / 来源 分布 |
+| GET | `/api/papers` | 论文列表，支持 `conference`、`year`、`tag`、`q`、`source`、`limit`、`offset` |
+| GET | `/api/papers/{id}` | 单篇详情 |
+| PATCH | `/api/papers/{id}/abstract_zh` | 更新人工中文摘要（body: `{"abstract_zh": "..."}`) |
 
-然后在浏览器中访问：
+## 中英文与中文摘要
 
-```
-http://localhost:8000
-```
+- 界面文案通过前端轻量 i18n（`frontend/src/i18n`）实现中英切换。
+- 论文摘要默认展示英文原文；当某篇论文通过 `PATCH /api/papers/{id}/abstract_zh` 补充了中文摘要后，中文界面下会优先展示中文摘要，否则回退英文原文。
 
-## 📖 使用说明
+## 技术栈
 
-### 搜索论文
-
-在搜索框中输入关键词，可以搜索论文标题、作者、摘要或标签。
-
-### 标签筛选
-
-点击页面上方的标签按钮（如 diffusion、denoising、generative），可以按主题筛选论文。
-
-### 更新论文数据
-
-定期运行 `python scraper.py` 可以获取最新的论文数据。
-
-## 📝 爬虫脚本参数
-
-| 参数 | 说明 |
-|------|------|
-| `--force` | 强制更新，忽略已有论文数量检查 |
-
-## 📄 论文数据格式
-
-`papers.json` 文件包含论文列表，每篇论文的结构如下：
-
-```json
-{
-  "title": "论文标题",
-  "authors": ["作者1", "作者2"],
-  "conference": "来源会议",
-  "pdf_url": "PDF链接",
-  "abs_url": "摘要页面链接",
-  "abstract": "摘要内容",
-  "tags": ["标签1", "标签2"]
-}
-```
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 许可证
-
-MIT License
+- 后端：FastAPI · SQLAlchemy · SQLite · Pydantic · requests · BeautifulSoup
+- 前端：React 18 · TypeScript · Vite · Tailwind CSS · lucide-react

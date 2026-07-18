@@ -1,0 +1,24 @@
+# Secrets / local env (never commit API keys)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Local database (regenerable from scrapers)
+backend/papers.db
+backend/papers.db-shm
+backend/papers.db-wal
+
+# Build artifacts
+backend/static/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+
+# Local tooling data
+.codebuddy/
