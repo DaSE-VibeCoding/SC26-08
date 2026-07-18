@@ -1,3 +1,8 @@
+# DEPRECATED: This standalone script is kept for backward compatibility only.
+# The collection logic has been migrated to the FastAPI backend under
+# `backend/scrapers/`. To collect papers into the database, run:
+#     cd backend && python3 scrapers/run.py --max 100
+# This file still works to refresh the legacy papers.json seed file.
 import requests
 import json
 import time
