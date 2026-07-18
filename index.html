@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diffusion Papers - ACL Collection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .search-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .search-bar input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .search-bar input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .tags-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        
+        .tag-btn {
+            background: rgba(255,255,255,0.25);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .tag-btn:hover, .tag-btn.active {
+            background: rgba(255,255,255,0.4);
+            transform: translateY(-2px);
+        }
+        
+        .paper-list {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .paper-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .paper-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        
+        .paper-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .paper-title a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .paper-title a:hover {
+            text-decoration: underline;
+        }
+        
+        .paper-authors {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+        }
+        
+        .paper-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .conference-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-weight: 500;
+        }
+        
+        .abstract-preview {
+            color: #555;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .paper-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .tag {
+            background: #f0f0f0;
+            color: #555;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        
+        .tag.diffusion { background: #e8f5e9; color: #2e7d32; }
+        .tag.denoising { background: #e3f2fd; color: #1565c0; }
+        .tag.generative { background: #fce4ec; color: #c2185b; }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            padding: 40px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+        }
+        
+        .empty-state h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state p {
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .stats {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .paper-title {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Diffusion Papers</h1>
+            <p>ACL Conference Collection</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalCount">0</div>
+                <div class="stat-label">Total Papers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="conferenceCount">0</div>
+                <div class="stat-label">Conferences</div>
+            </div>
+        </div>
+        
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search papers by title, authors or keywords...">
+        </div>
+        
+        <div class="tags-filter" id="tagsFilter">
+            <button class="tag-btn active" data-tag="all">All</button>
+        </div>
+        
+        <div class="paper-list" id="paperList">
+            <div class="loading">Loading papers...</div>
+        </div>
+    </div>
+    
+    <script>
+        let papers = [];
+        let allTags = new Set();
+        
+        async function loadPapers() {
+            try {
+                const response = await fetch('papers.json?' + new Date().getTime());
+                papers = await response.json();
+                
+                papers.forEach(p => {
+                    p.tags.forEach(tag => allTags.add(tag));
+                });
+                
+                renderTags();
+                renderPapers(papers);
+                updateStats();
+            } catch (error) {
+                console.error('Error loading papers:', error);
+                document.getElementById('paperList').innerHTML = `
+                    <div class="empty-state">
+                        <h2>❌ Failed to load papers</h2>
+                        <p>Please run the scraper first or check if papers.json exists</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderTags() {
+            const container = document.getElementById('tagsFilter');
+            allTags.forEach(tag => {
+                const btn = document.createElement('button');
+                btn.className = 'tag-btn';
+                btn.textContent = tag;
+                btn.dataset.tag = tag;
+                btn.addEventListener('click', () => filterByTag(tag));
+                container.appendChild(btn);
+            });
+        }
+        
+        function updateStats() {
+            document.getElementById('totalCount').textContent = papers.length;
+            const conferences = new Set(papers.map(p => p.conference));
+            document.getElementById('conferenceCount').textContent = conferences.size;
+        }
+        
+        function renderPapers(paperList) {
+            const container = document.getElementById('paperList');
+            
+            if (paperList.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>📭 No papers found</h2>
+                        <p>Try adjusting your search or filter</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = paperList.map(paper => `
+                <div class="paper-card">
+                    <h3 class="paper-title">
+                        ${paper.abs_url ? `<a href="${paper.abs_url}" target="_blank">${paper.title}</a>` : paper.title}
+                    </h3>
+                    <div class="paper-authors">
+                        ${paper.authors.length > 0 ? paper.authors.join(', ') : 'Authors not available'}
+                    </div>
+                    <div class="paper-meta">
+                        <span class="conference-badge">${paper.conference}</span>
+                    </div>
+                    ${paper.abstract ? `<p class="abstract-preview">${paper.abstract}</p>` : ''}
+                    <div class="paper-tags">
+                        ${paper.tags.map(tag => `<span class="tag ${tag.toLowerCase().replace(/\s+/g, '-')}">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterByTag(tag) {
+            document.querySelectorAll('.tag-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tag === 'all') {
+                renderPapers(papers);
+            } else {
+                const filtered = papers.filter(p => p.tags.includes(tag));
+                renderPapers(filtered);
+            }
+        }
+        
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            
+            const filtered = papers.filter(p => 
+                p.title.toLowerCase().includes(query) ||
+                p.authors.some(a => a.toLowerCase().includes(query)) ||
+                p.tags.some(t => t.toLowerCase().includes(query)) ||
+                (p.abstract && p.abstract.toLowerCase().includes(query))
+            );
+            
+            renderPapers(filtered);
+        });
+        
+        loadPapers();
+    </script>
+</body>
+</html>
