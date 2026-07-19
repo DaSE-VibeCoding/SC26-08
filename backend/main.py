@@ -18,6 +18,8 @@ from models import (
     MetaResponse,
     PaperListResponse,
     PaperOut,
+    PaperNoteUpdate,
+    PaperStateUpdate,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -60,13 +62,17 @@ def list_papers(
     tag: str | None = Query(None),
     q: str | None = Query(None),
     source: str | None = Query(None),
+    is_read: bool | None = Query(None),
+    is_favorite: bool | None = Query(None),
+    has_note: bool | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
     total, items = crud.list_papers(
         db, conference=conference, year=year, tag=tag, q=q,
-        source=source, limit=limit, offset=offset,
+        source=source, is_read=is_read, is_favorite=is_favorite, has_note=has_note,
+        limit=limit, offset=offset,
     )
     return {
         "total": total,
@@ -89,6 +95,33 @@ def update_abstract_zh(
     paper_id: int, payload: AbstractZhUpdate, db: Session = Depends(get_db)
 ):
     paper = crud.update_abstract_zh(db, paper_id, payload.abstract_zh)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    return PaperOut(**paper.to_dict())
+
+
+@app.patch("/api/papers/{paper_id}/state", response_model=PaperOut)
+def update_paper_state(
+    paper_id: int, payload: PaperStateUpdate, db: Session = Depends(get_db)
+):
+    if payload.is_read is None and payload.is_favorite is None:
+        raise HTTPException(status_code=400, detail="No state field supplied")
+    paper = crud.update_paper_state(
+        db,
+        paper_id,
+        is_read=payload.is_read,
+        is_favorite=payload.is_favorite,
+    )
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    return PaperOut(**paper.to_dict())
+
+
+@app.patch("/api/papers/{paper_id}/note", response_model=PaperOut)
+def update_paper_note(
+    paper_id: int, payload: PaperNoteUpdate, db: Session = Depends(get_db)
+):
+    paper = crud.update_paper_note(db, paper_id, payload.note)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     return PaperOut(**paper.to_dict())

@@ -11,6 +11,15 @@ from models import Paper
 
 logger = logging.getLogger(__name__)
 
+SOURCE_PRIORITY = {
+    "official": 0,
+    "proceedings": 1,
+    "semanticscholar": 2,
+    "arxiv": 3,
+    "paperswithcode": 4,
+    "papernotes": 5,
+}
+
 
 def normalize_title(title: str) -> str:
     """Lowercase and strip punctuation/whitespace for dedupe keys."""
@@ -22,26 +31,38 @@ def upsert_paper(db: Session, data: dict) -> bool:
     title_key = normalize_title(data.get("title", ""))
     source = data.get("source", "arxiv")
 
-    existing = (
-        db.query(Paper)
-        .filter(Paper.title_key == title_key, Paper.source == source)
-        .first()
-    )
+    # A paper is unique by normalized title across sources. Conference
+    # proceedings take precedence over aggregators and arXiv preprints.
+    existing = db.query(Paper).filter(Paper.title_key == title_key).first()
 
     authors = json.dumps(data.get("authors", []), ensure_ascii=False)
     tags = json.dumps(data.get("tags", []), ensure_ascii=False)
 
     if existing:
-        existing.title = data.get("title", existing.title)
-        existing.authors = authors
-        existing.conference = data.get("conference", existing.conference)
-        existing.year = data.get("year", existing.year)
-        existing.pdf_url = data.get("pdf_url", existing.pdf_url)
-        existing.abs_url = data.get("abs_url", existing.abs_url)
-        existing.abstract = data.get("abstract", existing.abstract)
+        incoming_is_authoritative = (
+            SOURCE_PRIORITY.get(source, 99)
+            < SOURCE_PRIORITY.get(existing.source, 99)
+        )
+        incoming_authors = data.get("authors", [])
+        incoming_abstract = data.get("abstract", "") or ""
+
+        if incoming_is_authoritative:
+            existing.title = data.get("title") or existing.title
+            existing.conference = data.get("conference") or existing.conference
+            existing.year = data.get("year") or existing.year
+            existing.source = source
+        if incoming_authors and (incoming_is_authoritative or existing.authors == "[]"):
+            existing.authors = authors
+        if incoming_abstract and len(incoming_abstract) > len(existing.abstract or ""):
+            existing.abstract = incoming_abstract
+        if data.get("pdf_url") and (incoming_is_authoritative or not existing.pdf_url):
+            existing.pdf_url = data["pdf_url"]
+        if data.get("abs_url") and (incoming_is_authoritative or not existing.abs_url):
+            existing.abs_url = data["abs_url"]
         if data.get("abstract_zh"):
             existing.abstract_zh = data["abstract_zh"]
-        existing.tags = tags
+        if data.get("tags"):
+            existing.tags = tags
         db.commit()
         return False
 
@@ -79,6 +100,9 @@ def list_papers(
     tag: Optional[str] = None,
     q: Optional[str] = None,
     source: Optional[str] = None,
+    is_read: Optional[bool] = None,
+    is_favorite: Optional[bool] = None,
+    has_note: Optional[bool] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -90,6 +114,12 @@ def list_papers(
         query = query.filter(Paper.year == year)
     if source:
         query = query.filter(Paper.source == source)
+    if is_read is not None:
+        query = query.filter(Paper.is_read == is_read)
+    if is_favorite is not None:
+        query = query.filter(Paper.is_favorite == is_favorite)
+    if has_note is True:
+        query = query.filter(func.length(func.trim(Paper.note)) > 0)
     if tag:
         query = query.filter(Paper.tags.like(f'%"{tag}"%'))
     if q:
@@ -122,6 +152,34 @@ def update_abstract_zh(db: Session, paper_id: int, abstract_zh: str) -> Optional
         return None
     paper.abstract_zh = abstract_zh
     db.commit()
+    return paper
+
+
+def update_paper_state(
+    db: Session,
+    paper_id: int,
+    is_read: Optional[bool] = None,
+    is_favorite: Optional[bool] = None,
+) -> Optional[Paper]:
+    paper = get_paper(db, paper_id)
+    if not paper:
+        return None
+    if is_read is not None:
+        paper.is_read = is_read
+    if is_favorite is not None:
+        paper.is_favorite = is_favorite
+    db.commit()
+    db.refresh(paper)
+    return paper
+
+
+def update_paper_note(db: Session, paper_id: int, note: str) -> Optional[Paper]:
+    paper = get_paper(db, paper_id)
+    if not paper:
+        return None
+    paper.note = note
+    db.commit()
+    db.refresh(paper)
     return paper
 
 

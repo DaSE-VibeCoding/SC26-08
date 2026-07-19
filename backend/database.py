@@ -1,7 +1,7 @@
 """SQLite database setup, session management and schema creation."""
 import logging
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from config import DB_PATH
@@ -33,6 +33,20 @@ def init_db():
     import models  # noqa: F401  ensure models are registered
 
     Base.metadata.create_all(bind=engine)
+    columns = {column["name"] for column in inspect(engine).get_columns("papers")}
+    with engine.begin() as connection:
+        if "is_read" not in columns:
+            connection.execute(
+                text("ALTER TABLE papers ADD COLUMN is_read BOOLEAN NOT NULL DEFAULT 0")
+            )
+        if "is_favorite" not in columns:
+            connection.execute(
+                text("ALTER TABLE papers ADD COLUMN is_favorite BOOLEAN NOT NULL DEFAULT 0")
+            )
+        if "note" not in columns:
+            connection.execute(
+                text("ALTER TABLE papers ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+            )
     logger.info("Database initialized at %s", DB_PATH)
 
 
