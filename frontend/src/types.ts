@@ -8,6 +8,9 @@ export interface Paper {
   abs_url: string | null;
   abstract: string;
   abstract_zh: string | null;
+  note: string;
+  is_read: boolean;
+  is_favorite: boolean;
   tags: string[];
   source: string;
 }
@@ -32,6 +35,12 @@ export interface Filters {
   year: string;
   tag: string;
   q: string;
+  library: "all" | "read" | "favorites" | "notes";
 }
 
 export type Lang = "zh" | "en";
+
+export interface PaperStatePatch {
+  is_read?: boolean;
+  is_favorite?: boolean;
+}

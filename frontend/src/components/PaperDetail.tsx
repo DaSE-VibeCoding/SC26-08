@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, FileText, ExternalLink, Calendar, Users, Languages, Loader2 } from "lucide-react";
+import { X, FileText, ExternalLink, Calendar, Users, Languages, Loader2, Eye, EyeOff, Star } from "lucide-react";
 import { useI18n } from "../i18n";
 import { translatePaperAbstract } from "../api/client";
 import type { Paper } from "../types";
@@ -7,9 +7,11 @@ import type { Paper } from "../types";
 interface Props {
   paper: Paper;
   onClose: () => void;
+  onStateChange: (paper: Paper, patch: { is_read?: boolean; is_favorite?: boolean }) => void;
+  onOpenWorkspace: (paper: Paper) => void;
 }
 
-export default function PaperDetail({ paper, onClose }: Props) {
+export default function PaperDetail({ paper, onClose, onStateChange, onOpenWorkspace }: Props) {
   const { t, lang } = useI18n();
   const [translatedAbstract, setTranslatedAbstract] = useState(paper.abstract_zh);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -150,18 +152,37 @@ export default function PaperDetail({ paper, onClose }: Props) {
           </div>
         )}
 
+        {/* Personal reading state */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => onStateChange(paper, { is_read: !paper.is_read })}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${paper.is_read ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+          >
+            {paper.is_read ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {t(paper.is_read ? "markUnread" : "markRead")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onStateChange(paper, { is_favorite: !paper.is_favorite })}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${paper.is_favorite ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+          >
+            <Star className={`h-4 w-4 ${paper.is_favorite ? "fill-current" : ""}`} />
+            {t(paper.is_favorite ? "removeFavorite" : "addFavorite")}
+          </button>
+        </div>
+
         {/* Links */}
         <div className="flex flex-wrap gap-3">
           {paper.pdf_url && (
-            <a
-              href={paper.pdf_url}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => onOpenWorkspace(paper)}
               className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 active:scale-95"
             >
               <FileText className="h-4 w-4" />
               {t("viewPdf")}
-            </a>
+            </button>
           )}
           {paper.abs_url && (
             <a

@@ -3,7 +3,7 @@ import json
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Column, Integer, String, Text, UniqueConstraint, Index
+from sqlalchemy import Boolean, Column, Integer, String, Text, UniqueConstraint, Index
 
 from database import Base
 
@@ -24,6 +24,9 @@ class Paper(Base):
     abs_url = Column(String, nullable=True)
     abstract = Column(Text, default="")
     abstract_zh = Column(Text, nullable=True)
+    note = Column(Text, nullable=False, default="", server_default="")
+    is_read = Column(Boolean, nullable=False, default=False, server_default="0", index=True)
+    is_favorite = Column(Boolean, nullable=False, default=False, server_default="0", index=True)
     tags = Column(Text, default="[]")                       # JSON-encoded list
     source = Column(String, default="arxiv", index=True)
 
@@ -43,6 +46,9 @@ class Paper(Base):
             "abs_url": self.abs_url,
             "abstract": self.abstract or "",
             "abstract_zh": self.abstract_zh,
+            "note": self.note or "",
+            "is_read": bool(self.is_read),
+            "is_favorite": bool(self.is_favorite),
             "tags": json.loads(self.tags or "[]"),
             "source": self.source,
         }
@@ -60,6 +66,9 @@ class PaperBase(BaseModel):
     abs_url: Optional[str] = None
     abstract: str = ""
     abstract_zh: Optional[str] = None
+    note: str = ""
+    is_read: bool = False
+    is_favorite: bool = False
     tags: List[str] = []
     source: str = "arxiv"
 
@@ -85,3 +94,12 @@ class MetaResponse(BaseModel):
 
 class AbstractZhUpdate(BaseModel):
     abstract_zh: str = Field(..., description="Human-written Chinese abstract")
+
+
+class PaperStateUpdate(BaseModel):
+    is_read: Optional[bool] = None
+    is_favorite: Optional[bool] = None
+
+
+class PaperNoteUpdate(BaseModel):
+    note: str = Field(default="", max_length=50000)

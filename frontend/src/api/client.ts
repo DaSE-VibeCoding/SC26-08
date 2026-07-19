@@ -1,4 +1,4 @@
-import type { Filters, Meta, Paper, PaperListResponse } from "../types";
+import type { Filters, Meta, Paper, PaperListResponse, PaperStatePatch } from "../types";
 
 const API_BASE = "/api";
 
@@ -21,6 +21,9 @@ export async function fetchPapers(
   if (filters.year) params.set("year", filters.year);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.q) params.set("q", filters.q);
+  if (filters.library === "read") params.set("is_read", "true");
+  if (filters.library === "favorites") params.set("is_favorite", "true");
+  if (filters.library === "notes") params.set("has_note", "true");
   params.set("limit", String(limit));
   params.set("offset", String(offset));
 
@@ -37,5 +40,28 @@ export async function translatePaperAbstract(paperId: number): Promise<Paper> {
     method: "POST",
   });
   if (!res.ok) throw new Error("translatePaperAbstract failed");
+  return res.json();
+}
+
+export async function updatePaperState(
+  paperId: number,
+  patch: PaperStatePatch
+): Promise<Paper> {
+  const res = await fetch(`${API_BASE}/papers/${paperId}/state`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error("updatePaperState failed");
+  return res.json();
+}
+
+export async function updatePaperNote(paperId: number, note: string): Promise<Paper> {
+  const res = await fetch(`${API_BASE}/papers/${paperId}/note`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note }),
+  });
+  if (!res.ok) throw new Error("updatePaperNote failed");
   return res.json();
 }

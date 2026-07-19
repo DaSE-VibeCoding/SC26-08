@@ -1,23 +1,57 @@
-import { Calendar } from "lucide-react";
+import { Calendar, Eye, EyeOff, Star } from "lucide-react";
 import { useI18n } from "../i18n";
 import type { Paper } from "../types";
 
 interface Props {
   paper: Paper;
   onOpen: (p: Paper) => void;
+  onStateChange: (paper: Paper, patch: { is_read?: boolean; is_favorite?: boolean }) => void;
+  showNote?: boolean;
 }
 
-export default function PaperCard({ paper, onOpen }: Props) {
+export default function PaperCard({ paper, onOpen, onStateChange, showNote = false }: Props) {
   const { t } = useI18n();
 
-  const preview = paper.abstract;
+  const preview = showNote ? paper.note : paper.abstract;
 
   return (
-    <button
+    <article
       onClick={() => onOpen(paper)}
-      className="glass-card group flex flex-col rounded-2xl p-5 text-left shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") onOpen(paper);
+      }}
+      role="button"
+      tabIndex={0}
+      className={`glass-card group relative flex flex-col rounded-2xl p-5 text-left shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer ${paper.is_read ? "opacity-80" : ""}`}
     >
-      <h3 className="mb-2 line-clamp-2 text-base font-semibold leading-snug text-slate-800 transition group-hover:text-brand-600">
+      <div className="absolute right-3 top-3 flex gap-1">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStateChange(paper, { is_read: !paper.is_read });
+          }}
+          className={`rounded-full p-2 transition ${paper.is_read ? "bg-emerald-100 text-emerald-700" : "bg-white/80 text-slate-400 hover:text-slate-700"}`}
+          title={t(paper.is_read ? "markUnread" : "markRead")}
+          aria-label={t(paper.is_read ? "markUnread" : "markRead")}
+        >
+          {paper.is_read ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStateChange(paper, { is_favorite: !paper.is_favorite });
+          }}
+          className={`rounded-full p-2 transition ${paper.is_favorite ? "bg-amber-100 text-amber-500" : "bg-white/80 text-slate-400 hover:text-amber-500"}`}
+          title={t(paper.is_favorite ? "removeFavorite" : "addFavorite")}
+          aria-label={t(paper.is_favorite ? "removeFavorite" : "addFavorite")}
+        >
+          <Star className={`h-4 w-4 ${paper.is_favorite ? "fill-current" : ""}`} />
+        </button>
+      </div>
+      <h3 className="mb-2 line-clamp-2 pr-20 text-base font-semibold leading-snug text-slate-800 transition group-hover:text-brand-600">
         {paper.title}
       </h3>
 
@@ -40,9 +74,10 @@ export default function PaperCard({ paper, onOpen }: Props) {
       </div>
 
       {preview && (
-        <p className="mb-3 line-clamp-3 flex-1 text-sm leading-relaxed text-slate-600">
-          {preview}
-        </p>
+        <div className={`mb-3 flex-1 ${showNote ? "rounded-xl bg-amber-50 p-3" : ""}`}>
+          {showNote && <p className="mb-1 text-[11px] font-semibold text-amber-700">{t("notePreview")}</p>}
+          <p className="line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{preview}</p>
+        </div>
       )}
 
       <div className="mt-auto flex flex-wrap gap-1.5">
@@ -55,6 +90,6 @@ export default function PaperCard({ paper, onOpen }: Props) {
           </span>
         ))}
       </div>
-    </button>
+    </article>
   );
 }
