@@ -1,6 +1,7 @@
-import { useEffect } from "react";
-import { X, FileText, ExternalLink, Calendar, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, FileText, ExternalLink, Calendar, Users, Languages, Loader2 } from "lucide-react";
 import { useI18n } from "../i18n";
+import { translatePaperAbstract } from "../api/client";
 import type { Paper } from "../types";
 
 interface Props {
@@ -10,6 +11,10 @@ interface Props {
 
 export default function PaperDetail({ paper, onClose }: Props) {
   const { t, lang } = useI18n();
+  const [translatedAbstract, setTranslatedAbstract] = useState(paper.abstract_zh);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -23,9 +28,23 @@ export default function PaperDetail({ paper, onClose }: Props) {
     };
   }, [onClose]);
 
-  const showZh = lang === "zh" && !!paper.abstract_zh;
-  const abstractText = showZh ? paper.abstract_zh! : paper.abstract;
-  const zhMissing = lang === "zh" && !paper.abstract_zh && !!paper.abstract;
+  const handleTranslate = async () => {
+    if (translatedAbstract) {
+      setShowTranslation((value) => !value);
+      return;
+    }
+    setTranslating(true);
+    setTranslationError(false);
+    try {
+      const updated = await translatePaperAbstract(paper.id);
+      setTranslatedAbstract(updated.abstract_zh);
+      setShowTranslation(true);
+    } catch {
+      setTranslationError(true);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   return (
     <div
@@ -74,19 +93,46 @@ export default function PaperDetail({ paper, onClose }: Props) {
         )}
 
         {/* Abstract */}
-        {abstractText && (
+        {paper.abstract && (
           <div className="mb-6">
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {t("abstract")}
-            </h3>
-            {zhMissing && (
-              <p className="mb-2 text-xs italic text-amber-600">
-                {t("abstractZhMissing")}
-              </p>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                {t("abstract")}
+              </h3>
+              {lang === "zh" && paper.abstract && (
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  disabled={translating}
+                  className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {translating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
+                  {translating
+                    ? t("translating")
+                    : showTranslation
+                      ? t("hideChinese")
+                      : translatedAbstract
+                        ? t("showChinese")
+                        : t("translateZh")}
+                </button>
+              )}
+            </div>
+            {translationError && (
+              <p className="mb-2 text-xs text-red-600">{t("translationFailed")}</p>
             )}
             <p className="text-sm leading-relaxed text-slate-700">
-              {abstractText}
+              {paper.abstract}
             </p>
+            {showTranslation && translatedAbstract && (
+              <div className="mt-4 rounded-xl bg-brand-50/70 p-4">
+                <p className="mb-2 text-xs font-semibold text-brand-700">
+                  {t("chineseTranslation")}
+                </p>
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {translatedAbstract}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -98,7 +144,7 @@ export default function PaperDetail({ paper, onClose }: Props) {
                 key={tag}
                 className="rounded-full bg-brand-50 px-3 py-1 text-xs text-brand-700"
               >
-                {tag}
+                {t(`tag.${tag}`)}
               </span>
             ))}
           </div>

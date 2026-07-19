@@ -20,6 +20,7 @@ from scrapers import (  # noqa: E402
     ProceedingsScraper,
     PaperNotesScraper,
     SemanticScholarScraper,
+    OfficialProceedingsScraper,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -27,13 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 def collect(max_per_source: int = 100) -> list:
-    scrapers = []
+    # Official proceedings are the primary conference source and are never
+    # truncated by the shared per-source demo limit.
+    scrapers = [OfficialProceedingsScraper()]
     if ENABLE_ARXIV:
         scrapers.append(ArxivScraper(max_results=max_per_source))
     if ENABLE_PAPERSWITHCODE:
         scrapers.append(PapersWithCodeScraper(max_results=max_per_source))
     if ENABLE_PROCEEDINGS:
-        scrapers.append(ProceedingsScraper(max_results=max_per_source))
+        scrapers.append(ProceedingsScraper(max_results=0))
     if ENABLE_SEMANTIC_SCHOLAR:
         scrapers.append(SemanticScholarScraper(max_results=max_per_source))
     if ENABLE_PAPERNOTES:

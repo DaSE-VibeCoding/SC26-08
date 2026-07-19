@@ -5,6 +5,7 @@ from .paperswithcode import PapersWithCodeScraper
 from .proceedings import ProceedingsScraper
 from .papernotes import PaperNotesScraper
 from .semanticscholar import SemanticScholarScraper
+from .official import OfficialProceedingsScraper
 
 __all__ = [
     "ScraperBase",
@@ -14,4 +15,5 @@ __all__ = [
     "ProceedingsScraper",
     "PaperNotesScraper",
     "SemanticScholarScraper",
+    "OfficialProceedingsScraper",
 ]

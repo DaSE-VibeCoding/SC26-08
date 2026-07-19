@@ -1,6 +1,8 @@
 """FastAPI application: REST API + static frontend hosting."""
 import logging
 import os
+import re
+import requests
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -89,6 +91,50 @@ def update_abstract_zh(
     paper = crud.update_abstract_zh(db, paper_id, payload.abstract_zh)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
+    return PaperOut(**paper.to_dict())
+
+
+def _translate_to_chinese(text: str) -> str:
+    """Translate long text in bounded chunks using Google's public endpoint."""
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    chunks, current = [], ""
+    for sentence in sentences:
+        if current and len(current) + len(sentence) + 1 > 2500:
+            chunks.append(current)
+            current = sentence
+        else:
+            current = f"{current} {sentence}".strip()
+    if current:
+        chunks.append(current)
+
+    translated = []
+    for chunk in chunks:
+        response = requests.get(
+            "https://translate.googleapis.com/translate_a/single",
+            params={"client": "gtx", "sl": "en", "tl": "zh-CN", "dt": "t", "q": chunk},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        translated.append("".join(part[0] for part in data[0] if part and part[0]))
+    return "".join(translated)
+
+
+@app.post("/api/papers/{paper_id}/translate_zh", response_model=PaperOut)
+def translate_abstract_zh(paper_id: int, db: Session = Depends(get_db)):
+    paper = crud.get_paper(db, paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    if paper.abstract_zh:
+        return PaperOut(**paper.to_dict())
+    if not paper.abstract:
+        raise HTTPException(status_code=400, detail="Paper has no abstract to translate")
+    try:
+        translated = _translate_to_chinese(paper.abstract)
+    except (requests.RequestException, ValueError, TypeError, IndexError) as exc:
+        logger.error("Translation failed for paper %s: %s", paper_id, exc)
+        raise HTTPException(status_code=502, detail="Translation service unavailable") from exc
+    paper = crud.update_abstract_zh(db, paper_id, translated)
     return PaperOut(**paper.to_dict())
 
 
